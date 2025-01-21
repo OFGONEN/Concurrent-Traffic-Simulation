@@ -2,6 +2,7 @@
 // #include "MessageQueue.h"
 #include <cstdlib>
 #include <ctime>
+#include <future>
 #include <iostream>
 
 // Generate random number
@@ -46,19 +47,21 @@ void TrafficLight::cycleThroughPhases() {
                      .count();
 
     if (delta > randomCycleTime) {
-      if (_currentPhase == TrafficLightPhase::Red) {
-        _currentPhase = TrafficLightPhase::Green;
-      } else {
-        _currentPhase = TrafficLightPhase::Red;
-      }
+      _currentPhase = _currentPhase == TrafficLightPhase::Red
+                          ? TrafficLightPhase::Green
+                          : TrafficLightPhase::Red;
 
       _queue.send(std::move(_currentPhase));
+
+      auto task =
+          std::async(std::launch::async, &MessageQueue<TrafficLightPhase>::send,
+                     &_queue, std::move(_currentPhase));
 
       now = std::chrono::system_clock::now();
 
       randomCycleTime = generateRandomNumber(4, 6);
-    }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
+      std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
+    }
   }
 }
