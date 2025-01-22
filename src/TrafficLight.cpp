@@ -12,10 +12,11 @@ long generateRandomNumber(long min, long max) {
   return dist(mt);
 }
 
-TrafficLight::TrafficLight() { _currentPhase = TrafficLightPhase::Green; }
+TrafficLight::TrafficLight() { _currentPhase = TrafficLightPhase::Red; }
 
 void TrafficLight::waitForGreen() {
   while (true) {
+    std::this_thread::sleep_for(std::chrono::microseconds(1));
     if (_queue.receive() == TrafficLightPhase::Green) {
       return;
     }
@@ -40,11 +41,13 @@ void TrafficLight::cycleThroughPhases() {
   auto now = std::chrono::system_clock::now();
 
   while (true) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
+
     long delta = std::chrono::duration_cast<std::chrono::milliseconds>(
                      std::chrono::system_clock::now() - now)
                      .count();
 
-    if (delta > randomCycleTime) {
+    if (delta >= randomCycleTime) {
       _currentPhase = _currentPhase == TrafficLightPhase::Red
                           ? TrafficLightPhase::Green
                           : TrafficLightPhase::Red;
@@ -52,12 +55,11 @@ void TrafficLight::cycleThroughPhases() {
       auto task =
           std::async(std::launch::async, &MessageQueue<TrafficLightPhase>::send,
                      &_queue, std::move(_currentPhase));
+      task.wait();
 
       now = std::chrono::system_clock::now();
 
       randomCycleTime = generateRandomNumber(randomCycleTime_min, randomCycleTime_max);
-
-      std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
     }
   }
 }
