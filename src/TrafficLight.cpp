@@ -1,20 +1,18 @@
 #include "TrafficLight.h"
 // #include "MessageQueue.h"
-#include <cstdlib>
-#include <ctime>
+#include <random>
 #include <future>
 #include <iostream>
 
 // Generate random number
-float generateRandomNumber(float min, float max) {
-  srand(static_cast<unsigned int>(time(0)));
-
-  float random = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
-
-  return min + random * (max - min);
+long generateRandomNumber(long min, long max) {
+  std::random_device rd;
+  std::mt19937 mt(rd());
+  std::uniform_real_distribution<double> dist(min, max);
+  return dist(mt);
 }
 
-TrafficLight::TrafficLight() { _currentPhase = TrafficLightPhase::Red; }
+TrafficLight::TrafficLight() { _currentPhase = TrafficLightPhase::Green; }
 
 void TrafficLight::waitForGreen() {
   while (true) {
@@ -33,16 +31,16 @@ void TrafficLight::simulate() {
 
 // virtual function which is executed in a thread
 void TrafficLight::cycleThroughPhases() {
-  float randomCycleTime_min = 4;
-  float randomCycleTime_max = 6;
-  float randomCycleTime =
+  long randomCycleTime_min = 4000;
+  long randomCycleTime_max = 6000;
+  long randomCycleTime =
       generateRandomNumber(randomCycleTime_min, randomCycleTime_max);
   int sleepTime = 1;
 
   auto now = std::chrono::system_clock::now();
 
   while (true) {
-    long delta = std::chrono::duration_cast<std::chrono::seconds>(
+    long delta = std::chrono::duration_cast<std::chrono::milliseconds>(
                      std::chrono::system_clock::now() - now)
                      .count();
 
@@ -51,15 +49,13 @@ void TrafficLight::cycleThroughPhases() {
                           ? TrafficLightPhase::Green
                           : TrafficLightPhase::Red;
 
-      _queue.send(std::move(_currentPhase));
-
       auto task =
           std::async(std::launch::async, &MessageQueue<TrafficLightPhase>::send,
                      &_queue, std::move(_currentPhase));
 
       now = std::chrono::system_clock::now();
 
-      randomCycleTime = generateRandomNumber(4, 6);
+      randomCycleTime = generateRandomNumber(randomCycleTime_min, randomCycleTime_max);
 
       std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
     }
